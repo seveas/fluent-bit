@@ -919,7 +919,7 @@ int flb_input_chunk_append_raw(struct flb_input_instance *in,
 #endif
 
     if (set_down == FLB_TRUE) {
-        cio_chunk_down(ic->chunk);
+        flb_input_chunk_down(ic);
     }
 
     /*
