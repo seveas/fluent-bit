@@ -237,6 +237,7 @@ option(FLB_OUT_SKYWALKING              "Enable Apache SkyWalking output plugin" 
 option(FLB_OUT_SLACK                   "Enable Slack output plugin"                   Yes)
 option(FLB_OUT_SPLUNK                  "Enable Splunk output plugin"                  Yes)
 option(FLB_OUT_STACKDRIVER             "Enable Stackdriver output plugin"             Yes)
+option(FLB_OUT_SHARDED                 "Enable sharded output plugin"                 Yes)
 option(FLB_OUT_STDOUT                  "Enable STDOUT output plugin"                  Yes)
 option(FLB_OUT_SYSLOG                  "Enable Syslog output plugin"                  Yes)
 option(FLB_OUT_LIB                     "Enable library mode output plugin"            Yes)
