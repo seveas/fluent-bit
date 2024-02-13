@@ -73,6 +73,7 @@ int flb_chunk_trace_output(struct flb_chunk_trace *trace, struct flb_output_inst
 #define FLB_OUTPUT_NET            32  /* output address may set host and port */
 #define FLB_OUTPUT_PLUGIN_CORE     0
 #define FLB_OUTPUT_PLUGIN_PROXY    1
+#define FLB_OUTPUT_PLUGIN_INDIRECT 2
 #define FLB_OUTPUT_NO_MULTIPLEX  512  /* run one task at a time, one task per flush */
 #define FLB_OUTPUT_PRIVATE      1024
 #define FLB_OUTPUT_SYNCHRONOUS  2048  /* run one task at a time, no flush cycle limit */
@@ -228,6 +229,9 @@ struct flb_output_plugin {
 
     /* Destroy */
     void (*cb_destroy) (struct flb_output_plugin *);
+
+    /* Indirect output */
+    struct flb_output_instance * (*cb_get_output) (struct flb_output_instance *);
 
     /* Default number of worker threads */
     int workers;

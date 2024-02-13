@@ -410,6 +410,10 @@ struct flb_task *flb_task_create(uint64_t ref_id,
                 return NULL;
             }
 
+            if (o_ins->flags & FLB_OUTPUT_PLUGIN_INDIRECT) {
+                o_ins = o_ins->p->cb_get_output(o_ins);
+            }
+
             route->out = o_ins;
             mk_list_add(&route->_head, &task->routes);
         }
@@ -432,6 +436,10 @@ struct flb_task *flb_task_create(uint64_t ref_id,
             if (!route) {
                 flb_errno();
                 continue;
+            }
+
+            if (o_ins->flags & FLB_OUTPUT_PLUGIN_INDIRECT) {
+                o_ins = o_ins->p->cb_get_output(o_ins);
             }
 
             route->status = FLB_TASK_ROUTE_INACTIVE;
