@@ -118,6 +118,10 @@ static int configure(struct filter_parser_ctx *ctx,
     }
     ctx->key_name_len = flb_sds_len(ctx->key_name);
 
+    if (ctx->parser_key_name != NULL) {
+        ctx->parser_key_name_len = flb_sds_len(ctx->parser_key_name);
+    }
+
     /* Read all Parsers */
     mk_list_foreach(head, &f_ins->properties) {
         kv = mk_list_entry(head, struct flb_kv, _head);
@@ -130,7 +134,7 @@ static int configure(struct filter_parser_ctx *ctx,
         }
     }
 
-    if (mk_list_size(&ctx->parsers) == 0) {
+    if (mk_list_size(&ctx->parsers) == 0 && ctx->parser_key_name == NULL) {
         flb_plg_error(ctx->ins, "Invalid 'parser'");
         return -1;
     }
@@ -197,6 +201,7 @@ static int cb_parser_filter(const void *data, size_t bytes,
     int append_arr_i;
     struct mk_list *head;
     struct filter_parser *fp;
+    struct flb_parser *p;
     struct flb_log_event_encoder log_encoder;
     struct flb_log_event_decoder log_decoder;
     struct flb_log_event log_event;
@@ -237,6 +242,26 @@ static int cb_parser_filter(const void *data, size_t bytes,
         obj = log_event.body;
 
         if (obj->type == MSGPACK_OBJECT_MAP) {
+            if (ctx->parser_key_name != NULL) {
+                for (i = 0; i < map_num && continue_parsing; i++) {
+                    kv = &obj->via.map.ptr[i];
+                    if ( msgpackobj2char(&kv->key, &key_str, &key_len) < 0 ) {
+                        /* key is not string */
+                        continue;
+                    }
+                    if (key_len == ctx->parser_key_name_len &&
+                        !strncmp(key_str, ctx->parser_key_name, key_len)) {
+                        if ( msgpackobj2char(&kv->val, &val_str, &val_len) < 0 ) {
+                            /* val is not string */
+                            continue;
+                        }
+                        /* Lookup parser */
+                        p = flb_parser_get(val_str, config);
+                        break;
+                    }
+                }
+            }
+
             map_num = obj->via.map.size;
             if (ctx->reserve_data) {
                 append_arr_len = obj->via.map.size;
@@ -268,6 +293,42 @@ static int cb_parser_filter(const void *data, size_t bytes,
                     if ( msgpackobj2char(&kv->val, &val_str, &val_len) < 0 ) {
                         /* val is not string */
                         continue;
+                    }
+
+                    if(ctx->parser_key_name != NULL) {
+                        if (p == NULL) {
+                            continue;
+                        }
+                        flb_time_zero(&parsed_time);
+
+                        parse_ret = flb_parser_do(p, val_str, val_len,
+                                                  (void **) &out_buf, &out_size,
+                                                  &parsed_time);
+                        if (parse_ret >= 0) {
+                            /*
+                             * If the parser succeeded we need to check the
+                             * status of the parsed time. If the time was
+                             * parsed successfully 'parsed_time' will be
+                             * different than zero, if so, override the time
+                             * holder with the new value, otherwise keep the
+                             * original.
+                             */
+                            if (flb_time_to_nanosec(&parsed_time) != 0L) {
+                                flb_time_copy(&tm, &parsed_time);
+                            }
+
+                            if (ctx->reserve_data) {
+                                if (!ctx->preserve_key) {
+                                    append_arr_i--;
+                                    append_arr_len--;
+                                    append_arr[append_arr_i] = NULL;
+                                }
+                            }
+                            else {
+                                continue_parsing = FLB_FALSE;
+                            }
+                            continue;
+                        }
                     }
 
                     /* Lookup parser */
@@ -425,6 +486,11 @@ static struct flb_config_map config_map[] = {
      FLB_CONFIG_MAP_MULT, FLB_FALSE, 0,
      "Specify the parser name to interpret the field. "
      "Multiple Parser entries are allowed (one per line)."
+    },
+    {
+     FLB_CONFIG_MAP_STR, "Parser_Key", NULL,
+     0, FLB_FALSE, offsetof(struct filter_parser_ctx, parser_key_name),
+     "Specify the key to look at to find the parser name to interpret the field. "
     },
     {
      FLB_CONFIG_MAP_BOOL, "Preserve_Key", "false",

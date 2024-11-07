@@ -33,6 +33,8 @@ struct filter_parser {
 struct filter_parser_ctx {
     flb_sds_t key_name;
     int    key_name_len;
+    flb_sds_t parser_key_name;
+    int    parser_key_name_len;
     int    reserve_data;
     int    preserve_key;
     struct mk_list parsers;
